@@ -37,6 +37,7 @@ jobs:
             --output data/processed/feature_house_data.csv \
             --preprocessor models/trained/preprocessor.pkl
 
+      #train the model
       - name: Train the model
         run: |
           python src/models/train_model.py \
