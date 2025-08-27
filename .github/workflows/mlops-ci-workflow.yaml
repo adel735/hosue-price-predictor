@@ -36,7 +36,13 @@ jobs:
             --input data/processed/cleaned_house_data.csv \
             --output data/processed/feature_house_data.csv \
             --preprocessor models/trained/preprocessor.pkl
-
+      - name: Setup MLflow
+        run: |
+          docker pull ghcr.io/mlflow/mlflow:latest 
+          docker run -d -p 5555:5000 --name mlflow ghcr.io/mlflow/mlflow:latest \
+            mlflow server --host 0.0.0.0 \
+            --backend-store-uri sqlite:///mlflow.db \
+            --default-artifact-root /tmp/mlruns
       #train the model
       - name: Train the model
         run: |
@@ -45,3 +51,9 @@ jobs:
           --data data/processed/feature_house_data.csv \
           --models-dir models \
           --mlflow-tracking-uri http://localhost:5555 
+
+      - name: Stop MLflow
+        run: |
+          docker stop mlflow
+          docker rm mlflow
+          docker rmi ghcr.io/mlflow/mlflow:latest
