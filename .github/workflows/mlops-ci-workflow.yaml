@@ -89,13 +89,13 @@ jobs:
             mlflow server --host 0.0.0.0 \
             --backend-store-uri sqlite:///mlflow.db \
             --default-artifact-root /tmp/mlruns
-        - name: wait for MLflow to start
-          run: |
-            for i in {1..30}; do
-              if curl -s http://localhost:5555/health | grep -q '"status":"healthy"'; then
-                echo "MLflow is up and running"
-                break
-              fi
+      - name: wait for MLflow to start
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:5555/health | grep -q '"status":"healthy"'; then
+              echo "MLflow is up and running"
+              break
+            fi
               echo "Waiting for MLflow to start..."
               sleep 2
             done
