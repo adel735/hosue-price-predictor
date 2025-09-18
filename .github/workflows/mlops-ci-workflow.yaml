@@ -144,40 +144,33 @@ jobs:
     
       
       -  name: Set up Docker Buildx
-         uses: docker/setup-buildx-action@v1
-      
-      -  name: Build and test Docker image
-         run: |
-           COMMIT_HASH=$(echo ${{ github.sha }} | cut -c1-7)
-           docker build Dockerfile docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-model:${COMMIT_HASH}
-           
-           docker run -d -p 8000:8000 --name test-api docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-model:${COMMIT_HASH}
-           for i in {1..10}; do
-              if curl -s http://localhost:8000/health | grep -q '"status":"ok"'; then
-                echo "API is up and running"
-                break
-              fi
-              echo "Waiting for API to start..."
-              sleep 2
-           done
-      - name: Clean up Test Container
-        run: |
-          docker stop test-api || true
-          docker rm test-api || true
+         uses: docker/setup-buildx-action@v2
 
       - name: Login to Github Container Registry
         uses: docker/login-action@v3
         with:
           registry: docker.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}  
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push Docker image to Docker Hub
-        run: |
-          COMMIT_HASH=$(echo ${{ github.sha }} | cut -c1-7)
-          docker tag docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-predictor:${COMMIT_HASH} docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-predictor:latest
-          docker push docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-predictor:$COMMIT_HASH
-          docker push docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-predictor:latest
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+    # This line tells Docker where to find the Dockerfile and other build files
+          context: .
+          push: true
+          tags: |
+            COMMIT_HASH=$(echo ${{ github.sha }} | cut -c1-7)
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-model:${COMMIT_HASH}
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-model:latest
+      
+    
+
+      
+
+
+        
+
 
 
 
