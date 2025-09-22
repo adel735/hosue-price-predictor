@@ -153,9 +153,7 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set environment variables
-        id: vars
-        run: echo "COMMIT_HASH=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
+    
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -163,7 +161,7 @@ jobs:
           context: .
           push: true
           tags: |
-            docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-model:${{ env.COMMIT_HASH }}
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-model:v2
             docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-model:latest
     
 
