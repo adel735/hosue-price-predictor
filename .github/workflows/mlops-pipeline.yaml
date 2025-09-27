@@ -114,13 +114,14 @@ jobs:
           --mlflow_tracking_uri http://localhost:5000 \
           --mlflow_experiment_name "House Price Prediction" \
           --mlflow_run_name "Model Training Run"
-
-    - name: Clean up MLflow container
+    - name: Cleanup MLflow container
       run: |
         docker stop mlflow-server
         docker rm mlflow-server
 
-    build_and_publish:
+    
+
+  build_and_publish:
       runs-on: ubuntu-latest
       needs: model_training
       steps:
