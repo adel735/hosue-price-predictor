@@ -105,13 +105,13 @@ jobs:
           sleep 5
         done
     - name: Train the model
-        run: |
-          mkdir -p models
-          python src/models/train_model.py \
-          --config configs/model_config.yaml \
-          --data data/processed/featured_house_data.csv \
-          --models-dir models \
-          --mlflow-tracking-uri http://localhost:5555 
+      run: |
+        mkdir -p models
+        python src/models/train_model.py \
+        --config configs/model_config.yaml \
+        --data data/processed/featured_house_data.csv \
+        --models-dir models \
+        --mlflow-tracking-uri http://localhost:5555 
     - name: Cleanup MLflow container
       run: |
         docker stop mlflow-server
