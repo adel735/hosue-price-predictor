@@ -161,7 +161,7 @@ jobs:
           context: .
           push: true
           tags: |
-            docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-model:v2
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-model:v3
             docker.io/${{ vars.DOCKERHUB_USERNAME }}/house-price-model:latest
     
 
