@@ -1,0 +1,158 @@
+name: MLOps Pipeline
+on:
+  workflow_dispatch:
+    inputs:
+      do_all:
+        description: 'Run all jobs'
+        default: 'true'
+        required: false
+      do_data_processing:
+        description: 'Run data processing job'
+        default: 'false'
+        required: false
+      do_model_training:
+        description: 'Run model training job'
+        default: 'false'
+        required: false
+      do_build_and_publish:
+        description: 'Run build and publish job'
+        default: 'false'
+        required: false
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  data-processing:
+    name: data-processing
+    if: github.event.inputs.do_all == 'true' || github.event.inputs.do_data_processing == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.11.0'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Process data
+        run: |
+          python src/data_processing.py --input data/raw/house_data.csv --output data/processed/cleaned_house_data.csv
+      - name: Engineer features
+        run: |
+          python src/feature_engineering.py --input data/processed/cleaned_house_data.csv --output data/processed/featured_house_data.csv
+      - name: Upload processed data
+        uses: actions/upload-artifact@v3
+        with:
+          name: processed-data
+          path: data/processed/featured_house_data.csv
+
+---
+  model-training:
+    name: model-training
+    needs: data-processing
+    if: needs.data-processing.result == 'success' && (github.event.inputs.do_all == 'true' || github.event.inputs.do_model_training == 'true' || github.event_name == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.11.0'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Download processed data
+        uses: actions/download-artifact@v3
+        with:
+          name: processed-data
+          path: data/processed/
+      - name: Set up MLFlow
+        run: |
+          docker pull dacort/mlflow:latest
+          docker run -d -p 5000:5000 --name mlflow-server python/mlflow-server --host 0.0.0.0 --backend-store sqlite:///mlruns.db
+      - name: Wait for MLFlow to start
+        run: |
+          for i in {1..20}; do
+            curl -f http://localhost:5000/health || sleep 3;
+          done
+      - name: Train model
+        run: |
+          python src/model.py --mode=train --config config/model_config.yaml --data data/processed/featured_house_data.csv --mlflow_uri http://localhost:5000
+      - name: Upload trained model
+        uses: actions/upload-artifact@v3
+        with:
+          name: trained-model
+          path: models/
+      - name: Clean up MLFlow
+        run: |
+          docker stop mlflow-server || true
+          docker rm mlflow-server || true
+      - name: Clean up docker
+        run: |
+          docker stop $(docker ps -a -q) || true
+          docker rm $(docker ps -a -q) || true
+
+---
+  build-and-publish:
+    name: build-and-publish
+    needs: model-training
+    if: needs.model-training.result == 'success' && (github.event.inputs.do_all == 'true' || github.event.inputs.do_build_and_publish == 'true' || github.event_name == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download trained model
+        uses: actions/download-artifact@v3
+        with:
+          name: trained-model
+          path: trained-model/
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and Test Docker Image
+        run: |
+          DOCKER_IMAGE_NAME=house-price-model
+          DOCKERFILE=Dockerfile
+          REGISTRY_URL=docker.io
+          IMAGE_TAG_LATEST=$REGISTRY_URL/$DOCKER_USERNAME/$DOCKER_IMAGE_NAME:latest
+          IMAGE_TAG_COMMIT=$REGISTRY_URL/$DOCKER_USERNAME/$DOCKER_IMAGE_NAME:${{ github.sha }}
+
+          # Build and test the latest image
+          docker build -t $IMAGE_TAG_LATEST -f $DOCKERFILE .
+          # Run test container to check image
+          docker run -d --rm --name test-model -p 8888:8888 $IMAGE_TAG_LATEST
+          # Wait for the service to start (example health check)
+          for i in {1..20}; do
+            curl -f http://localhost:8888/health || sleep 3;
+          done
+          # Stop and remove the test container
+          docker stop test-model || true
+          docker rm test-model || true
+
+          # Clean up host container
+          docker stop $(docker ps -a -q) || true
+          docker rm $(docker ps -a -q) || true
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v2
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Push Docker Image to Dockerhub
+        run: |
+          DOCKER_IMAGE_NAME=house-price-model
+          REGISTRY_URL=docker.io
+          IMAGE_TAG_LATEST=$REGISTRY_URL/${{ vars.DOCKER_USERNAME }}/$DOCKER_IMAGE_NAME:latest
+          IMAGE_TAG_COMMIT=$REGISTRY_URL/${{ vars.DOCKER_USERNAME }}/$DOCKER_IMAGE_NAME:${{ github.sha }}
+
+          # Tag for the specific commit SHA
+          docker tag $REGISTRY_URL/$DOCKER_USERNAME/house-price-model:latest $IMAGE_TAG_COMMIT
+          
+          # Push both tags
+          docker push $IMAGE_TAG_LATEST
+          docker push $IMAGE_TAG_COMMIT
