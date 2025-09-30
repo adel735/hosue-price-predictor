@@ -30,9 +30,9 @@ jobs:
     if: github.event.inputs.do_all == 'true' || github.event.inputs.do_data_processing == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11.0'
       - name: Install dependencies
@@ -46,7 +46,7 @@ jobs:
         run: |
           python src/feature_engineering.py --input data/processed/cleaned_house_data.csv --output data/processed/featured_house_data.csv
       - name: Upload processed data
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: processed-data
           path: data/processed/featured_house_data.csv
@@ -58,9 +58,9 @@ jobs:
     if: needs.data-processing.result == 'success' && (github.event.inputs.do_all == 'true' || github.event.inputs.do_model_training == 'true' || github.event_name == 'push')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11.0'
       - name: Install dependencies
@@ -68,7 +68,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Download processed data
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: processed-data
           path: data/processed/
@@ -85,7 +85,7 @@ jobs:
         run: |
           python src/model.py --mode=train --config config/model_config.yaml --data data/processed/featured_house_data.csv --mlflow_uri http://localhost:5000
       - name: Upload trained model
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: trained-model
           path: models/
@@ -105,14 +105,14 @@ jobs:
     if: needs.model-training.result == 'success' && (github.event.inputs.do_all == 'true' || github.event.inputs.do_build_and_publish == 'true' || github.event_name == 'push')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Download trained model
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: trained-model
           path: trained-model/
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Build and Test Docker Image
         run: |
           DOCKER_IMAGE_NAME=house-price-model
