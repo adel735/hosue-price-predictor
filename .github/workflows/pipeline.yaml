@@ -52,7 +52,7 @@ jobs:
           name: processed-data
           path: data/processed/featured_house_data.csv
 
----
+
   model-training:
     name: model-training
     needs: data-processing
@@ -99,7 +99,7 @@ jobs:
           docker stop $(docker ps -a -q) || true
           docker rm $(docker ps -a -q) || true
 
----
+
   build-and-publish:
     name: build-and-publish
     needs: model-training
