@@ -75,7 +75,7 @@ jobs:
           path: data/processed/
       - name: Set up MLFlow
         run: |
-          docker pull dacort/mlflow:latest
+          docker pull ghcr.io/mlflow/mlflow:latest
           docker run -d -p 5000:5000 --name mlflow-server python/mlflow-server --host 0.0.0.0 --backend-store sqlite:///mlruns.db
       - name: Wait for MLFlow to start
         run: |
